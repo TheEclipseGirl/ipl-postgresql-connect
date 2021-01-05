@@ -9,6 +9,7 @@
   "author": "Shalini",
   "license": "ISC",
   "dependencies": {
-    "csv-sequelize": "^1.0.3"
+    "fast-csv": "^4.3.6",
+    "pg": "^8.5.1"
   }
 }
