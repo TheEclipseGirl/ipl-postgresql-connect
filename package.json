@@ -1,0 +1,14 @@
+{
+  "name": "ipl_postgres",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Shalini",
+  "license": "ISC",
+  "dependencies": {
+    "csv-sequelize": "^1.0.3"
+  }
+}
