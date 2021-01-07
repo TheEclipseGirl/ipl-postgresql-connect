@@ -38,20 +38,19 @@ const insertCsvIntoTable = (filePath, fileName,columns) => {
     })
     .on("end", function() {
 
-    // remove the first line: header
-    csvData.shift();
-    const pool = new Pool(configDb);
+        // remove the first line: header
+        csvData.shift();
+        const pool = new Pool(configDb);
 
-    columns = columns.join(',');                            
-    const query = format(`INSERT INTO ${fileName} ( ${columns} ) VALUES %L`, csvData);
+        columns = columns.join(',');                            
+        const query = format(`INSERT INTO ${fileName} ( ${columns} ) VALUES %L`, csvData);
 
-
-    pool.connect((err, client, done) => {
-      if (err) throw err;
+        pool.connect((err, client, done) => {
+            if (err) throw err;
             console.log('connected');
             console.log('Total rows to be inserted:-', csvData.length - 1)
             console.log('Starting insertion.....');
-            pool.query(query,[], (err, res) => {
+            pool.query(query, (err, res) => {
                 if(err){
                     console.log('Error while inserting a row',err);
                     throw err;
