@@ -2,8 +2,6 @@ const fs = require("fs");
 const { Pool } = require('pg');
 const fastcsv = require("fast-csv");
 const format = require('pg-format');
-const { resolve } = require("path");
-const { reject } = require("lodash");
 
 const configDb = {
     host: "localhost",
@@ -83,6 +81,21 @@ const matchesPLayedPerYear = () => {
         });
     });
 }
+const matchesWonPerYearPerTeam = () => {
+    return new Promise((resolve, reject) => {
+        const pool = new Pool(configDb);
+        pool.connect((err, client, done) => {
+            if(err) throw err;
+            console.log('Connected to database');
+            pool.query(`select season, teams, count(*) as total_wins  from ( select season, team1 as teams from matches where winner = team1 union all select season , team2 as teams from matches where winner = team2) as new_table  group by season, teams`, (err, res) => {
+                if (err) throw err
+                console.log('res', res);
+                done();
+                resolve();
+            });
+        });
+    });
+}
 
 (async function(){
     // deliveries
@@ -98,5 +111,6 @@ const matchesPLayedPerYear = () => {
     // await insertCsvIntoTable("./data/matches.csv", 'matches', matchesColumns);
 
     // Number of matches played per year for all the years in IPL.
-    await matchesPLayedPerYear();
+    // await matchesPLayedPerYear();
+    await matchesWonPerYearPerTeam();
 })();
