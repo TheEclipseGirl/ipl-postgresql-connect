@@ -97,6 +97,22 @@ const matchesWonPerYearPerTeam = () => {
     });
 }
 
+const extraRunsConceededInAYear = (year) => {
+    return new Promise((resolve, reject) => {
+        const pool = new Pool(configDb);
+        pool.connect((err, client, done) => {
+            if(err) throw err;
+            console.log('Connected to database');
+            pool.query(`select distinct match_id, bowling_team, sum(extra_runs) as total_extras from deliveries where match_id in (select id as match_id from matches where season = ${year})  group by match_id, bowling_team order by match_id asc;`, (err, res) => {
+                if (err) throw err
+                console.log('res', res);
+                done();
+                resolve();
+            });
+        });
+    });
+}
+
 (async function(){
     // deliveries
     // let deliveriesColumnsWithDatatypes = ['match_id INTEGER','inning INTEGER','batting_team TEXT','bowling_team TEXT','over INTEGER','ball INTEGER','batsman TEXT','non_striker TEXT','bowler TEXT','is_super_over INTEGER','wide_runs INTEGER','bye_runs INTEGER','legbye_runs INTEGER','noball_runs INTEGER','penalty_runs INTEGER','batsman_runs INTEGER','extra_runs INTEGER','total_runs INTEGER','player_dismissed TEXT','dismissal_kind TEXT','fielder TEXT'];
@@ -112,5 +128,6 @@ const matchesWonPerYearPerTeam = () => {
 
     // Number of matches played per year for all the years in IPL.
     // await matchesPLayedPerYear();
-    await matchesWonPerYearPerTeam();
+    // await matchesWonPerYearPerTeam();
+    await extraRunsConceededInAYear(2016);
 })();
