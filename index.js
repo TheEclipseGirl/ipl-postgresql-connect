@@ -119,7 +119,8 @@ const topEconomicalBowlersInAYear = (limit, year) => {
         pool.connect((err, client, done) => {
             if(err) throw err;
             console.log('Connected to database');
-            pool.query(`select ROW_NUMBER() over (order by economy)  AS  rank, * from  (select *, total_runs_given/total_bowls_sum as economy from (select t1.bowler, t1.total_runs_given, t2.total_bowls_sum from (select bowler, sum(total_runs_given) as total_runs_given from (select match_id, bowler, sum(total_runs) as total_runs_given from deliveries where match_id in (select id as match_id from matches where season = ${year}) group by match_id, bowler) as table_first group by bowler) t1 join (select bowler, sum(total_bowls) as total_bowls_sum from (select match_id, bowler, count(bowler) as total_bowls from deliveries where match_id in (select id as match_id from matches where season = ${year}) group by match_id, bowler) as table1 group by bowler) t2 on t1.bowler = t2.bowler) tableNoEco ) as economy_table order by economy asc limit ${limit}`, (err, res) => {
+            pool.query(`select row_number() over (order by economy) as rank ,bowler, economy from  (select bowler,((1.0 * sum(total_runs))/count(over)) as economy from matches inner join deliveries on id = match_id where season = ${year} group by bowler order by economy limit ${limit}) as bowler_economy;
+            `, (err, res) => {
                 if (err) throw err
                 console.log('res', res);
                 done();
@@ -144,9 +145,9 @@ const topEconomicalBowlersInAYear = (limit, year) => {
 
     // Common Query Functions -
     // await matchesPLayedPerYear();
-    await matchesWonPerYearPerTeam();
+    // await matchesWonPerYearPerTeam();
     // await extraRunsConceededInAYear(2016);
-    // await topEconomicalBowlersInAYear(10, 2015);
+    await topEconomicalBowlersInAYear(10, 2015);
 })();
 
 // select ROW_NUMBER() over (order by economy)  AS  rank, * from  (select *, total_runs_given/total_bowls_sum as economy from (select t1.bowler, t1.total_runs_given, t2.total_bowls_sum from (select bowler, sum(total_runs_given) as total_runs_given from (select match_id, bowler, sum(total_runs) as total_runs_given from deliveries where match_id in (select id as match_id from matches where season = 2015) group by match_id, bowler) as table_first group by bowler) t1 join (select bowler, sum(total_bowls) as total_bowls_sum from (select match_id, bowler, count(bowler) as total_bowls from deliveries where match_id in (select id as match_id from matches where season = 2015) group by match_id, bowler) as table1 group by bowler) t2 on t1.bowler = t2.bowler) tableNoEco ) as economy_table order by economy asc limit 10;
