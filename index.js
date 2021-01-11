@@ -4,6 +4,7 @@ const fastcsv = require("fast-csv");
 const format = require('pg-format');
 const knex = require('./db/knex');
 const { select, count } = require("./db/knex");
+const { matches } = require("lodash");
 
 const configDb = {
     host: "localhost",
@@ -60,17 +61,16 @@ const matchesPLayedPerYear = () => {
 
 const matchesWonPerYearPerTeam = () => {
     return new Promise((resolve, reject) => {
-        const pool = new Pool(configDb);
-        pool.connect((err, client, done) => {
-            if(err) throw err;
-            console.log('Connected to database');
-            pool.query(`select season,winner,count(winner) as matches_won from matches where winner !=  ''  group by winner,season order by season;`, (err, res) => {
-                if (err) throw err
-                console.log('res', res);
-                done();
-                resolve();
-            });
-        });
+// select season,winner,count(winner) as matches_won from matches where winner !=  ''  group by winner,season order by season;
+        knex.select('season','winner').count('winner as matches_won').from ('matches').whereNot('winner' , '').groupBy('winner','season').orderBy('season')
+        .then((output)=>{
+            console.log(output);
+            resolve();
+        })
+        .catch((error)=>{
+            console.log('Error in matches played per year:', error);
+            reject();
+        })
     });
 }
 
@@ -113,8 +113,8 @@ const topEconomicalBowlersInAYear = (limit, year) => {
     // await insertCsvIntoTable('./data/matches.csv', 'matches');
 
     // Common Query Functions -
-    await matchesPLayedPerYear();
-    // await matchesWonPerYearPerTeam();
+    // await matchesPLayedPerYear();
+    await matchesWonPerYearPerTeam();
     // await extraRunsConceededInAYear(2016);
     // await topEconomicalBowlersInAYear(10, 2015);
     
