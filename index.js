@@ -76,17 +76,16 @@ const matchesWonPerYearPerTeam = () => {
 
 const extraRunsConceededInAYear = (year) => {
     return new Promise((resolve, reject) => {
-        const pool = new Pool(configDb);
-        pool.connect((err, client, done) => {
-            if(err) throw err;
-            console.log('Connected to database');
-            pool.query(`select distinct match_id, bowling_team, sum(extra_runs) as total_extras from deliveries where match_id in (select id as match_id from matches where season = ${year})  group by match_id, bowling_team order by match_id asc;`, (err, res) => {
-                if (err) throw err
-                console.log('res', res);
-                done();
-                resolve();
-            });
-        });
+        const subquery = knex.select('id as match_id').from ('matches').whereRaw('season = 2015')
+        knex.distinct('match_id','bowling_team').sum('extra_runs as total_extras').from('deliveries').whereIn('match_id',subquery).groupBy('match_id','bowling_team').orderBy('match_id')
+        .then((output) => {
+            console.log(output);
+            resolve();
+        })
+        .catch((error) => {
+            console.log('Error in matches played per year:', error);
+            reject();
+        })
     });
 }
 
@@ -114,8 +113,8 @@ const topEconomicalBowlersInAYear = (limit, year) => {
 
     // Common Query Functions -
     // await matchesPLayedPerYear();
-    await matchesWonPerYearPerTeam();
-    // await extraRunsConceededInAYear(2016);
+    // await matchesWonPerYearPerTeam();
+    await extraRunsConceededInAYear(2016);
     // await topEconomicalBowlersInAYear(10, 2015);
     
 })();
