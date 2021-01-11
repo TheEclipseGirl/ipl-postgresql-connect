@@ -3,7 +3,7 @@ const { Pool } = require('pg');
 const fastcsv = require("fast-csv");
 const format = require('pg-format');
 const knex = require('./db/knex');
-const { select } = require("./db/knex");
+const { select, count } = require("./db/knex");
 
 const configDb = {
     host: "localhost",
@@ -45,7 +45,7 @@ const insertCsvIntoTable = (filePath, tableName) => {
 
 const matchesPLayedPerYear = () => {
     return new Promise((resolve, reject) => {
-        knex.select('batting_team','bowling_team').from('deliveries')
+        knex.select('season as year').count('* as total_matches').from('matches').groupBy('season').havingRaw('count(*) > 1').orderBy('year')
         .then((output) => {
             console.log(output);
             resolve();
