@@ -2,6 +2,8 @@ const fs = require("fs");
 const { Pool } = require('pg');
 const fastcsv = require("fast-csv");
 const format = require('pg-format');
+const knex = require('./db/knex');
+const path = require('path');
 
 const configDb = {
     host: "localhost",
@@ -11,60 +13,93 @@ const configDb = {
     port: 5432
 }
 
-const createTable = (tableName, columns) => {
-    return new Promise((resolve, reject) =>{
-        const pool = new Pool(configDb);
-        pool.connect((err, client, done) => {
-            if(err) throw err;
-            console.log('Connected to database');
-            columns = columns.join(',');
-            pool.query(`CREATE TABLE ${tableName} ( ${columns} )`, (err, res) => {
-                if (err) throw err
-                console.log('New Table created');
-                done();
-                resolve();
-            });
-        });
-    });
-}
+// const createTable = (tableName, columns) => {
+//     return new Promise((resolve, reject) =>{
+//         const pool = new Pool(configDb);
+//         pool.connect((err, client, done) => {
+//             if(err) throw err;
+//             console.log('Connected to database');
+//             columns = columns.join(',');
+//             pool.query(`CREATE TABLE ${tableName} ( ${columns} )`, (err, res) => {
+//                 if (err) throw err
+//                 console.log('New Table created');
+//                 done();
+//                 resolve();
+//             });
+//         });
+//     });
+// }
 
-const insertCsvIntoTable = (filePath, fileName,columns) => {
+// const insertCsvIntoTable = (filePath, fileName,columns) => {
+//     return new Promise((resolve, reject) => {
+//         let stream = fs.createReadStream(filePath);
+//         let csvData = [];
+//         let csvStream = fastcsv
+//         .parse()
+//         .on("data", function(data) {
+//             csvData.push(data);
+//         })
+//         .on("end", function() {
+    
+//             // remove the first line: header
+//             csvData.shift();
+//             const pool = new Pool(configDb);
+            
+//             console.log(csvData);
+
+//             columns = columns.join(',');                            
+//             const query = format(`INSERT INTO ${fileName} ( ${columns} ) VALUES %L`, csvData);
+    
+//             pool.connect((err, client, done) => {
+//                 if (err) throw err;
+//                 console.log('connected');
+//                 console.log('Total rows to be inserted:-', csvData.length - 1)
+//                 console.log('Starting insertion.....');
+//                 pool.query(query, (err, res) => {
+//                     if(err){
+//                         console.log('Error while inserting a row',err);
+//                         throw err;
+//                     }
+//                     console.log('Rows have been inserted');
+//                 });
+//                 done();
+//                 resolve();
+//             });
+//         });
+//         stream.pipe(csvStream);
+//     });
+// }
+
+
+
+const insertCsvIntoTable = (filePath, tableName) => {
     return new Promise((resolve, reject) => {
         let stream = fs.createReadStream(filePath);
         let csvData = [];
         let csvStream = fastcsv
-        .parse()
+        .parse({ 
+            headers: true,
+        })
         .on("data", function(data) {
-            csvData.push(data);
+          csvData.push(data);
         })
         .on("end", function() {
-    
-            // remove the first line: header
-            csvData.shift();
-            const pool = new Pool(configDb);
-    
-            columns = columns.join(',');                            
-            const query = format(`INSERT INTO ${fileName} ( ${columns} ) VALUES %L`, csvData);
-    
-            pool.connect((err, client, done) => {
-                if (err) throw err;
-                console.log('connected');
-                console.log('Total rows to be inserted:-', csvData.length - 1)
-                console.log('Starting insertion.....');
-                pool.query(query, (err, res) => {
-                    if(err){
-                        console.log('Error while inserting a row',err);
-                        throw err;
-                    }
-                    console.log('Rows have been inserted');
-                });
-                done();
+            csvData.shift();   
+            const rows = csvData;
+            const chunkSize = 30;
+            knex.batchInsert(tableName, rows, chunkSize)
+            .then(function(ids) { 
+                console.log('Inserted');
                 resolve();
+            })
+            .catch(function(error) { 
+                console.log(error);
             });
         });
         stream.pipe(csvStream);
     });
 }
+
 
 const matchesPLayedPerYear = () => {
     return new Promise((resolve, reject) => {
@@ -147,7 +182,12 @@ const topEconomicalBowlersInAYear = (limit, year) => {
     // await matchesPLayedPerYear();
     // await matchesWonPerYearPerTeam();
     // await extraRunsConceededInAYear(2016);
-    await topEconomicalBowlersInAYear(10, 2015);
+    // await topEconomicalBowlersInAYear(10, 2015);
+
+    // queries using Knex :-
+    await insertCsvIntoTable('./data/deliveries.csv', 'deliveries');
+    await insertCsvIntoTable('./data/matches.csv', 'matches');
+    
 })();
 
 // select ROW_NUMBER() over (order by economy)  AS  rank, * from  (select *, total_runs_given/total_bowls_sum as economy from (select t1.bowler, t1.total_runs_given, t2.total_bowls_sum from (select bowler, sum(total_runs_given) as total_runs_given from (select match_id, bowler, sum(total_runs) as total_runs_given from deliveries where match_id in (select id as match_id from matches where season = 2015) group by match_id, bowler) as table_first group by bowler) t1 join (select bowler, sum(total_bowls) as total_bowls_sum from (select match_id, bowler, count(bowler) as total_bowls from deliveries where match_id in (select id as match_id from matches where season = 2015) group by match_id, bowler) as table1 group by bowler) t2 on t1.bowler = t2.bowler) tableNoEco ) as economy_table order by economy asc limit 10;
