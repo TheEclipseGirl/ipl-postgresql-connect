@@ -76,7 +76,7 @@ const matchesWonPerYearPerTeam = () => {
 
 const extraRunsConceededInAYear = (year) => {
     return new Promise((resolve, reject) => {
-        const subquery = knex.select('id as match_id').from ('matches').whereRaw('season = 2015')
+        const subquery = knex.select('id as match_id').from ('matches').whereRaw(`season = ${year}`)
         knex.distinct('match_id','bowling_team').sum('extra_runs as total_extras').from('deliveries').whereIn('match_id',subquery).groupBy('match_id','bowling_team').orderBy('match_id')
         .then((output) => {
             console.log(output);
@@ -91,18 +91,17 @@ const extraRunsConceededInAYear = (year) => {
 
 const topEconomicalBowlersInAYear = (limit, year) => {
     return new Promise((resolve, reject) => {
-        const pool = new Pool(configDb);
-        pool.connect((err, client, done) => {
-            if(err) throw err;
-            console.log('Connected to database');
-            pool.query(`select row_number() over (order by economy) as rank ,bowler, economy from  (select bowler,((1.0 * sum(total_runs))/count(over)) as economy from matches inner join deliveries on id = match_id where season = ${year} group by bowler order by economy limit ${limit}) as bowler_economy;
-            `, (err, res) => {
-                if (err) throw err
-                console.log('res', res);
-                done();
-                resolve();
-            });
-        });
+        // select row_number() over (order by economy) as rank ,bowler, economy from  (select bowler,((1.0 * sum(total_runs))/count(over)) as economy from matches inner join deliveries on id = match_id where season = ${year} group by bowler order by economy limit ${limit}) as bowler_economy;
+        const subquery = knex.raw(`select bowler,((1.0 * sum(total_runs))/count(over)) as economy from matches inner join deliveries on id = match_id where season = ${year} group by bowler order by economy limit ${limit}`);
+        knex.raw(`select row_number() over (order by economy) as rank, bowler , economy from (${subquery}) as bowler_economy`)
+        .then((output)=>{
+            console.log(output);
+            resolve();
+        })
+        .catch((error)=>{
+            console.log('Error in matches played per year:', error);
+            reject();
+        })
     });
 }
 
@@ -114,7 +113,7 @@ const topEconomicalBowlersInAYear = (limit, year) => {
     // Common Query Functions -
     // await matchesPLayedPerYear();
     // await matchesWonPerYearPerTeam();
-    await extraRunsConceededInAYear(2016);
-    // await topEconomicalBowlersInAYear(10, 2015);
+    // await extraRunsConceededInAYear(2016);
+    await topEconomicalBowlersInAYear(10, 2015);
     
 })();
